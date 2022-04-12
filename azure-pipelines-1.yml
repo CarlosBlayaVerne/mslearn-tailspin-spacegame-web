@@ -1,44 +1,44 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- master
+
 pool:
-  vmImage: 'ubuntu-20.04'
+  vmImage: 'windows-latest'
 
 variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
-  dotnetSdkVersion: '5.x'
+  system.debug: false
 
 steps:
-- task: UseDotNet@2
-  displayName: 'Use .NET SDK $(dotnetSdkVersion)'
+
+- task: UseDotNet@2 
+  displayName: "Instalar .NET Core 5.0.x"
   inputs:
-    version: '$(dotnetSdkVersion)'
+        version: '5.0.x'
+        performMultiLevelLookup: true
+        packageType: sdk
+        
+- script: dotnet build --configuration $(buildConfiguration)
+  displayName: 'Build Project $(buildConfiguration) '
 
 - task: DotNetCoreCLI@2
-  displayName: 'Restore project dependencies'
+  displayName: Testing Unit Test
   inputs:
-    command: 'restore'
-    projects: '**/*.csproj'
+    command: 'test'
+    projects: '**/xUnit.CaducaRest/*.csproj'
+    arguments: '--configuration $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
+    publishTestResults: true
+    testRunTitle: 'Unit Test'
 
-- task: DotNetCoreCLI@2
-  displayName: 'Build the project - $(buildConfiguration)'
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish code coverage report'
   inputs:
-    command: 'build'
-    arguments: '--no-restore --configuration $(buildConfiguration)'
-    projects: '**/*.csproj'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Pack the project - $(buildConfiguration)'
-  inputs:
-    command: 'pack'
-    projects: '**/*.csproj'
-    arguments: '--no-build --configuration $(buildConfiguration)'
-    versioningScheme: byPrereleaseNumber
-    majorVersion: '1'
-    minorVersion: '0'
-    patchVersion: '0'
- 
-- task: NuGetCommand@2
-  displayName: 'Publish NuGet package'
-  inputs:
-    command: push
-    feedPublish: '$(System.TeamProject)/Tailspin.SpaceGame.Web.Models'
-    allowPackageConflicts: true
-  condition: succeeded()
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
+  
